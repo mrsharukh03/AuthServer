@@ -3,6 +3,7 @@ package com.AuthServer.Controller;
 import com.AuthServer.DTOs.LoginDTO;
 import com.AuthServer.DTOs.SignupDTO;
 import com.AuthServer.Service.UserServices;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +29,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginDTO loginDTO){
-        return userServices.login(loginDTO);
+    public ResponseEntity<?> login(@Valid @RequestBody LoginDTO loginDTO, HttpServletRequest request){
+        return userServices.login(loginDTO,request);
     }
 }
