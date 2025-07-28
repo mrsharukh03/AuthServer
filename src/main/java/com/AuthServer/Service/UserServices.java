@@ -4,31 +4,29 @@ import com.AuthServer.DTOs.LoginDTO;
 import com.AuthServer.DTOs.SignupDTO;
 import com.AuthServer.Model.User;
 import com.AuthServer.Repository.UserRepository;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
+import com.AuthServer.Security.JWTUtils;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
+
+@Log4j2
 @Service
 public class UserServices {
 
     private final UserRepository userRepository;
-    private final AuthenticationManager authenticationManager;
+    @Autowired
+    private JWTUtils jwtUtils;
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public UserServices(UserRepository userRepository, AuthenticationManager authenticationManager) {
+    public UserServices(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.authenticationManager = authenticationManager;
     }
 
     public ResponseEntity<?> signup(SignupDTO signupDTO) {
@@ -46,28 +44,22 @@ public class UserServices {
             return new ResponseEntity<>("Something went wrong",HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    public ResponseEntity<?> login(LoginDTO loginDTO, HttpServletRequest request) {
+    public ResponseEntity<?> login(LoginDTO loginDTO) {
         try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            loginDTO.getEmail(),
-                            loginDTO.getPassword()
-                    )
-            );
-
-            // Set authentication in security context
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            // Create session and set context
-            HttpSession session = request.getSession(true); // creates session if not exists
-            session.setAttribute(
-                    HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-                    SecurityContextHolder.getContext()
-            );
-
-            return ResponseEntity.ok("Login successful");
-        } catch (BadCredentialsException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
+            User user = userRepository.findByEmail(loginDTO.getEmail());
+            if(user == null){
+                return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+            }
+            if(!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())){
+               return new ResponseEntity<>("Invalid Credential",HttpStatus.BAD_REQUEST);
+            }
+            Map<String,String> response = new HashMap<>();
+            response.put("access-token", jwtUtils.generateToken(user.getEmail(),user.getRole()));
+            response.put("refresh-token", jwtUtils.generateRefreshToken(user.getEmail(),user.getRole()));
+            return new ResponseEntity<>(response,HttpStatus.OK);
+        }catch (Exception e){
+            log.error("Error while login: {}",e.getMessage());
+            return new ResponseEntity<>("Something went wrong",HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
