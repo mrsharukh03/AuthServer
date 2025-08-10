@@ -128,8 +128,4 @@ Contributions and suggestions are welcome! Feel free to open issues or pull requ
 
 ## License
 
-MIT License © Your Name
-
----
-
-If you want, I can help you customize it further or write a React frontend README too. How does this look?
+MIT License © Mohammad Sharukh
